@@ -1,0 +1,379 @@
+
+
+
+
+//Full program. 
+//Prompt User to enter number twice
+//get both the numbers 
+//mutiply and output the result in decimal
+
+
+	.data  0x2000
+	.text  0x0000
+	.ascii str1 "Enter number:"
+
+//load the stack ptr
+
+	li	$sp, 0x30
+	mov	$sp, $r0
+	ls	$sp, 8
+
+	li	$r5, 0x50
+	ls	$r5, 8
+	li	$r6, 0
+	sw	$r6, 0($r5)
+
+
+	bal	op_str
+	bal	get_inp
+
+
+	li	$r5, 0x50
+	ls	$r5, 8
+	li	$r6, 1
+	sw	$r6, 0($r5)
+
+	bal	op_str
+	bal	get_inp
+
+
+	li	$r0, 0x10
+	ls	$r0, 8
+	lw	$r9, 0($r0)
+
+	addi	$r0, 2
+	lw	$r10, 0($r0)
+
+
+	bal 	multiply
+
+	li	$r0, 0x10
+	ls	$r0, 8
+	addi	$r0, 4
+	sw	$r11, 0($r0)
+
+
+	mov	$r0, $r11
+	bal	op_num
+	exit	
+	
+
+
+//-------------------------------------------------------
+
+
+op_str:
+	li	$r4, 4
+	sub	$sp,$r4
+	sw	$lr,0($sp)
+
+	li 	$r0, 0xFF
+	ls 	$r0, 8
+	li 	$r1, 0xFF
+	ls 	$r1, 8
+	ori 	$r1, 0x02
+
+	//load the address of the string (0x2000) into $r2
+	li	$r2, 0x20
+	ls	$r2, 8
+	li	$r6, 0
+
+wait_s:	
+	//read the IO CTL reg.
+	lw	$r7, 0($r0)
+	li	$r3, 0x02
+	andi	$r7, 0x02
+	bneq 	$r3, $r7, wait_s
+	lw	$r5,0($r2)
+	sw	$r5,0($r1)
+	addi	$r2,1
+
+	//check if null character printed
+	bneq	$r5,$r6,wait_s
+
+	lw	$lr,0($sp)
+	li	$r4, 4
+	add	$sp, $r4
+	ret
+	
+
+//-------------------------------------------------------
+
+
+
+checkNeg:
+	li	$r4, 4
+	sub	$sp,$r4
+	sw	$lr,0($sp)
+
+	li	$r4,0x80
+	ls	$r4,8
+	li	$r5,0x80
+	ls	$r5,8
+
+	and 	$r4,$r0
+	bneq	$r4,$r5,positive
+	li	$r5,0xFF
+	ls	$r5, 8
+	ori	$r5, 0xFD
+	bal	output
+	comp	$r0	
+positive:
+	lw	$lr,0($sp)
+	li	$r4, 4
+	add	$sp,$r4
+	ret
+
+//-------------------------------------------------------
+
+
+op_num:
+	li	$r4, 4
+	sub	$sp,$r4
+	sw	$lr,0($sp)
+
+	
+	li	$r1,10
+	li	$r2, 0
+	li 	$r3, 0
+	bal 	checkNeg
+
+restart:
+	li	$r2, 0	
+	li 	$r3, 0
+
+LP:
+	li	$r1,10
+	li	$r5,0
+	slt	$r4,$r0,$r5
+	bneq	$r4,$r5, end
+	li	$r6, 1
+	add	$r2,$r6	
+	sub	$r0,$r1
+	bal	LP
+
+end:
+	
+
+
+	li	$r3,0
+	add	$r3,$r0
+	add	$r3,$r1
+	subi	$r2, 1
+
+	mov	$r5,$r3
+	bal	output
+
+	slt	$r4,$r2,$r1
+	li	$r5,0
+	bneq	$r4,$r5,res_adj
+
+	//output the quotient
+	mov	$r5,$r2
+	li	$r3, 0
+	beq	$r5, $r3, fin	
+	bal	output
+	li	$r5, 0xFF
+	ls	$r5, 8
+	ori	$r5, 0xDA
+	bal	output
+fin:
+	lw	$lr,0($sp)
+	li	$r4, 4
+	add	$sp,$r4
+	ret
+
+res_adj:
+	mov	$r0,$r2
+	bal	restart
+
+
+
+
+//------------------------------
+
+	
+
+multiply:
+
+	li	$r4, 4
+	sub	$sp,$r4
+	sw	$lr,0($sp)
+	
+	//r9 has multiplier
+	//r10 has multiplicand
+	//r11 has product
+	
+	li	$r2, 0
+	mov	$r11, $r2
+
+do_mul:
+	li	$r6, 1
+	li	$r3, 1
+	and     $r6, $r10	
+	bneq	$r6, $r3 ,shift
+	add	$r11, $r9
+
+shift:
+	ls	$r9, 1
+	rs	$r10, 1
+	bneq	$r2, $r10, do_mul
+
+	lw	$lr,0($sp)
+	li	$r4, 4
+	add	$sp, $r4
+	ret	
+
+//-------------------------------
+
+
+
+
+input:
+	li	$r4, 4
+	sub	$sp,$r4
+	sw	$lr,0($sp)
+	li	$r7 , 0xFF
+	ls	$r7, 8
+wait_i:	
+	lw	$r6,0($r7)
+	li	$r4, 0x01
+	andi	$r6, 0x01
+	bneq	$r4, $r6, wait_i
+	li	$r7 , 0xFF
+	ls	$r7 ,8 
+	ori	$r7, 0x02
+	li	$r5, 0
+	lb	$r5, 0($r7)
+	subi	$r5, 0x30
+	
+
+
+	lw	$lr,0($sp)
+	li	$r4, 4
+	add	$sp, $r4
+	ret	
+
+
+
+//------------------------------------------
+
+
+output:
+	li	$r4, 4
+	sub	$sp,$r4
+	sw	$lr,0($sp)
+
+	li 	$r6, 0xFF
+	ls 	$r6, 8
+	li 	$r1, 0xFF
+	ls 	$r1, 8
+	ori 	$r1, 0x02
+wait_o:	
+	//read the IO CTL reg.
+
+	lw	$r7, 0($r6)
+	li	$r3, 0x02
+	andi	$r7, 0x02
+	bneq	$r7, $r3, wait_o
+	addi	$r5, 0x30
+	sb	$r5, 0($r1)
+	subi	$r5, 0x30
+
+
+	lw	$lr,0($sp)
+	li	$r4, 4
+	add	$sp, $r4
+	ret
+
+
+//------------------------------------------
+
+
+
+
+get_inp:
+	li	$r4, 4
+	sub	$sp,$r4
+	sw	$lr,0($sp)
+
+	li	$r0, 0
+	mov	$r12,$r0
+	mov	$r11,$r0
+	bal	input	
+	bal	output
+
+	li	$r0, 0xFF
+	ls	$r0, 8
+	ori	$r0 ,0xFD
+
+	bneq	$r0, $r5, firstdgt
+
+	//$r8 has the trace that it is a negative 
+	//number to be complemented later
+	li	$r6, 1
+	mov 	$r8, $r6
+
+posit:
+	bal	input	
+	bal	output
+firstdgt:
+	li	$r0, 0xFF
+	ls	$r0, 8
+	ori	$r0, 0xDA
+
+	bneq	$r0, $r5,process
+	bal	checkCom
+
+	li	$r0, 0x10
+	ls	$r0, 8
+	li	$r1, 0x50
+	ls	$r1, 8
+	lw	$r2, 0($r1)
+	li	$r3, 0
+	bneq	$r3, $r2, store
+	addi	$r0, 2	
+store:
+	sw	$r12, 0($r0)
+	
+	lw	$lr,0($sp)
+	li	$r4, 4
+	add	$sp, $r4
+	ret
+
+process:
+	li	$r6, 10
+
+//	r10 = 10, r11 = prev. digits
+
+	mov	$r10, $r6
+	mov 	$r9, $r12
+
+
+	bal	multiply
+
+//	add r5 which is new digit to r11 which is product 
+//	returned by multiply.
+
+	add	$r11, $r5
+	mov	$r12,$r11
+	bal 	posit
+
+//------------------------------
+
+checkCom:
+
+	li	$r4, 4
+	sub	$sp,$r4
+	sw	$lr,0($sp)
+	
+	li	$r1,1
+	bneq	$r1, $r8, return
+	comp	$r12
+
+return:
+	lw	$lr,0($sp)
+	li	$r4, 4
+	add	$sp,$r4
+	ret
+
